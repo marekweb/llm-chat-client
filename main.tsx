@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./app";
+import { Conversation } from "./Conversation";
 
 const root = createRoot(document.getElementById("root"));
-root.render(<App />);
+root.render(<Conversation socketUrl="ws://localhost:8080" />);

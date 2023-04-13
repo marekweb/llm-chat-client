@@ -2,10 +2,28 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export class SocketConnection<T, U> {
+interface SocketMessageFromClient {
+  type: "message";
+  agentId?: string;
+  conversationId?: string;
+  content: string;
+}
+
+interface SocketMessageFromServer {
+  type: "message";
+  conversationId?: string;
+  state?: string;
+  content?: string;
+}
+
+export class SocketConnection<
+  T extends SocketMessageFromClient,
+  U extends SocketMessageFromServer
+> {
   private url: string;
   private messageHandler: (message: U) => void;
   private socketPromise?: Promise<WebSocket>;
+  private id: string | undefined;
 
   constructor(url: string, messageHandler: (message: U) => void) {
     this.url = url;
@@ -24,8 +42,6 @@ export class SocketConnection<T, U> {
         });
         socket.addEventListener("close", async () => {
           this.socketPromise = undefined;
-          await delay(1000);
-          this.connect();
         });
       });
     }
@@ -35,5 +51,12 @@ export class SocketConnection<T, U> {
   async send(message: T): Promise<void> {
     const socket = await this.connect();
     socket.send(JSON.stringify(message));
+  }
+
+  async close(): Promise<void> {
+    if (this.socketPromise) {
+      const socket = await this.socketPromise;
+      socket.close();
+    }
   }
 }
