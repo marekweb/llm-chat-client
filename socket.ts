@@ -2,14 +2,14 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-interface SocketMessageFromClient {
+export interface SocketMessageFromClient {
   type: "message";
   agentId?: string;
   conversationId?: string;
   content: string;
 }
 
-interface SocketMessageFromServer {
+export interface SocketMessageFromServer {
   type: "message";
   conversationId?: string;
   state?: string;
@@ -17,13 +17,15 @@ interface SocketMessageFromServer {
 }
 
 export class SocketConnection<
-  T extends SocketMessageFromClient,
-  U extends SocketMessageFromServer
+  T extends SocketMessageFromClient = SocketMessageFromClient,
+  U extends SocketMessageFromServer = SocketMessageFromServer
 > {
   private url: string;
   private messageHandler: (message: U) => void;
   private socketPromise?: Promise<WebSocket>;
   private id: string | undefined;
+  private checkInterval: number | undefined;
+  public state = "empty";
 
   constructor(url: string, messageHandler: (message: U) => void) {
     this.url = url;
@@ -31,6 +33,23 @@ export class SocketConnection<
   }
 
   connect(): Promise<WebSocket> {
+    if (!this.checkInterval) {
+      this.checkInterval = window.setInterval(async () => {
+        if (this.socketPromise) {
+          const socket = await this.socketPromise;
+          if (socket.readyState === WebSocket.CLOSED) {
+            this.state = "closed";
+          } else if (socket.readyState === WebSocket.OPEN) {
+            this.state = "open";
+          } else {
+            this.state = "connecting";
+          }
+        } else {
+          this.state = "empty";
+        }
+      }, 100);
+    }
+
     if (!this.socketPromise) {
       this.socketPromise = new Promise((resolve, reject) => {
         const socket = new WebSocket(this.url);

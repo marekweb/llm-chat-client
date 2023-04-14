@@ -1,24 +1,17 @@
-import React, { FormEvent, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import Container from "react-bootstrap/Container";
+import Card from "react-bootstrap/Card";
+import Badge from "react-bootstrap/Badge";
 import {
-  Container,
-  Card,
-  Badge,
-  Form,
-  InputGroup,
-  Button,
-} from "react-bootstrap";
-import { SocketConnection } from "./socket";
-
+  SocketConnection,
+  SocketMessageFromClient,
+  SocketMessageFromServer,
+} from "./socket";
+import { ConversationMessage } from "./ConversationMessage";
+import { ChatInterface } from "./ChatInterface";
 interface ConversationProps {
   socketUrl: string;
 }
-
-interface ConversationMessage {
-  role: string;
-  content: string;
-}
-
-type Message = any; // TODO
 
 export const Conversation: React.FC<ConversationProps> = (props) => {
   const initialMessages = [{ role: "assistant", content: "Hello, world!" }];
@@ -26,32 +19,34 @@ export const Conversation: React.FC<ConversationProps> = (props) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
-  };
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputValue(value);
+    },
+    [setInputValue]
+  );
 
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [socket, setSocket] = useState<SocketConnection<
-    Message,
-    Message
-  > | null>(null);
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [socket, setSocket] = useState<SocketConnection | null>(null);
   const [messages, setMessages] =
     useState<ConversationMessage[]>(initialMessages);
   const appendMessage = (message: ConversationMessage) =>
     setMessages((prevMessages) => [...prevMessages, message]);
 
-  const handleMessage = (event: Message) => {
-    if (event?.conversationId) {
-      setConversationId(event.conversationId);
+  const handleMessage = (message: SocketMessageFromServer) => {
+    if (message?.conversationId) {
+      setConversationId(message.conversationId);
     }
-    appendMessage({ role: "assistant", content: event.content });
+    setIsLoading(false);
+    appendMessage({ role: "assistant", content: message.content ?? "" });
   };
 
-  const handleSend = (event: FormEvent) => {
-    event.preventDefault();
-    const message: Message = {
+  const handleSend = useCallback(() => {
+    const message: SocketMessageFromClient = {
       type: "message",
       content: inputValue,
+      conversationId: conversationId,
+      agentId: conversationId ? undefined : "001",
     };
 
     if (conversationId) {
@@ -63,63 +58,59 @@ export const Conversation: React.FC<ConversationProps> = (props) => {
     if (socket) {
       appendMessage({ role: "user", content: inputValue });
       socket.send(message);
+      setIsLoading(true); // TODO: need a timeout for loading state
     }
 
     setInputValue("");
-  };
+  }, [inputValue, conversationId, socket]);
 
   // connect to websocket
   useEffect(() => {
-    const socket = new SocketConnection<Message, Message>(
-      props.socketUrl,
-      handleMessage
-    );
+    const socket = new SocketConnection(props.socketUrl, handleMessage);
     setSocket(socket);
     return () => {
       socket.close();
     };
   }, [props.socketUrl]);
 
-  return (
-    <>
-      <Container>
-        {messages.map((message, index) => (
-          <Card className="my-4" key={index}>
-            <Card.Header>
-              <Badge bg={message.role === "user" ? "primary" : "success"}>
-                {message.role}
-              </Badge>
-            </Card.Header>
-            <Card.Body>
-              <Card.Text>{message.content}</Card.Text>
-            </Card.Body>
-          </Card>
-        ))}
-        {isLoading && (
-          <Card className="my-4">
-            <Card.Body>
-              <Card.Text>Typing...</Card.Text>
-            </Card.Body>
-          </Card>
-        )}
-      </Container>
-      <Container className="fixed-bottom mb-3">
-        <Form onSubmit={handleSend}>
-          <InputGroup>
-            <Form.Control
-              type="text"
-              placeholder="Type your message here..."
-              value={inputValue}
-              onChange={handleInputChange}
-              disabled={isLoading}
-            />
+  const status = socket ? socket.state : "disconnected";
 
-            <Button variant="primary" type="submit">
-              Send
-            </Button>
-          </InputGroup>
-        </Form>
-      </Container>
-    </>
+  return (
+    <ChatInterface
+      status={status}
+      messages={messages}
+      isWaiting={isLoading}
+      handleSend={handleSend}
+      inputValue={inputValue}
+      handleInputChange={handleInputChange}
+    />
   );
 };
+
+interface ConversationMessagesProps {
+  messages: ConversationMessage[];
+  isWaiting: boolean;
+}
+const ConversationMessages: React.FC<ConversationMessagesProps> = (props) => (
+  <Container>
+    {props.messages.map((message, index) => (
+      <Card className="my-4" key={index}>
+        <Card.Header>
+          <Badge bg={message.role === "user" ? "primary" : "success"}>
+            {message.role}
+          </Badge>
+        </Card.Header>
+        <Card.Body>
+          <Card.Text>{message.content}</Card.Text>
+        </Card.Body>
+      </Card>
+    ))}
+    {props.isWaiting && (
+      <Card className="my-4">
+        <Card.Body>
+          <Card.Text>Typing...</Card.Text>
+        </Card.Body>
+      </Card>
+    )}
+  </Container>
+);
