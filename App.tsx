@@ -25,13 +25,16 @@ const initialCategories = [
 ];
 
 export const App = () => {
-  const [categories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
 
   return (
     <Container>
       <Row>
         <Col>
-          <Conversation socketUrl="ws://localhost:8080" />
+          <Conversation
+            setCategories={setCategories}
+            socketUrl="ws://localhost:8080"
+          />
         </Col>
         <Col>
           <TrackerApp categories={categories} />

@@ -9,8 +9,10 @@ import {
 } from "./socket";
 import { ConversationMessage } from "./ConversationMessage";
 import { ChatInterface } from "./ChatInterface";
+import { Category } from "./TrackerApp";
 interface ConversationProps {
   socketUrl: string;
+  setCategories: (categories: Category[]) => void;
 }
 
 export const Conversation: React.FC<ConversationProps> = (props) => {
@@ -37,8 +39,13 @@ export const Conversation: React.FC<ConversationProps> = (props) => {
     if (message?.conversationId) {
       setConversationId(message.conversationId);
     }
-    setIsLoading(false);
-    appendMessage({ role: "assistant", content: message.content ?? "" });
+
+    if (message?.state === "update") {
+      props.setCategories(JSON.parse(message.content ?? ""));
+    } else {
+      setIsLoading(false);
+      appendMessage({ role: "assistant", content: message.content ?? "" });
+    }
   };
 
   const handleSend = useCallback(() => {
