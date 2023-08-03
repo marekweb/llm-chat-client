@@ -1,3 +1,7 @@
+import { EventEmitter } from "./EventEmitter";
+
+const SOCKET_PING_INTERVAL = 5500;
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -26,35 +30,39 @@ export class SocketConnection<
   private id: string | undefined;
   private checkInterval: number | undefined;
   public state = "empty";
+  public stateChange = new EventEmitter<string>();
 
   constructor(url: string, messageHandler: (message: U) => void) {
     this.url = url;
     this.messageHandler = messageHandler;
   }
 
-  connect(): Promise<WebSocket> {
-    if (!this.checkInterval) {
-      this.checkInterval = window.setInterval(async () => {
-        if (this.socketPromise) {
-          const socket = await this.socketPromise;
-          if (socket.readyState === WebSocket.CLOSED) {
-            this.state = "closed";
-          } else if (socket.readyState === WebSocket.OPEN) {
-            this.state = "open";
-          } else {
-            this.state = "connecting";
-          }
-        } else {
-          this.state = "empty";
-        }
-      }, 100);
+  private setState(state: string) {
+    console.log("Socket state changed to", state);
+    if (this.state === state) {
+      return;
     }
+    this.state = state;
+    this.stateChange.emit(state);
+  }
 
+  /**
+   * Connect to the socket if not already connected.
+   */
+  connect(): Promise<WebSocket> {
     if (!this.socketPromise) {
       this.socketPromise = new Promise((resolve, reject) => {
         const socket = new WebSocket(this.url);
+        console.log("The socket state is ", socket.readyState);
         socket.addEventListener("open", () => resolve(socket));
-        socket.addEventListener("error", (event) => reject(event));
+        socket.addEventListener("error", (event) => {
+          console.log('The "error" event occurred.', event);
+          console.log("The socket's state is", socket.readyState);
+          if (socket.readyState === WebSocket.CLOSED) {
+            console.log("the socket is now closed");
+          }
+          reject(event);
+        });
         socket.addEventListener("message", (event) => {
           const message = JSON.parse(event.data);
           this.messageHandler(message as U);

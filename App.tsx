@@ -3,41 +3,22 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import { Conversation } from "./Conversation";
-import { Category, TrackerApp } from "./TrackerApp";
+import { Task, TrackerApp } from "./TrackerApp";
+import { socketUrl } from "./config";
 
-// Use real sounding demo tasks, ja?
-const initialCategories = [
-  {
-    name: "Work",
-    tasks: [{ id: "1", name: "Check email", priority: 1, completed: false }],
-  },
-  {
-    name: "Home",
-    tasks: [
-      {
-        id: "2",
-        name: "Write down novel ideas",
-        priority: 1,
-        completed: false,
-      },
-    ],
-  },
-];
+const initialTasks: Task[] = [];
 
 export const App = () => {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [tasks, updateAppState] = useState<Task[]>(initialTasks);
 
   return (
     <Container>
       <Row>
         <Col>
-          <Conversation
-            setCategories={setCategories}
-            socketUrl="ws://localhost:8080"
-          />
+          <Conversation updateAppState={updateAppState} socketUrl={socketUrl} />
         </Col>
         <Col>
-          <TrackerApp categories={categories} />
+          <TrackerApp tasks={tasks} />
         </Col>
       </Row>
     </Container>

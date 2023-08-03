@@ -79,6 +79,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
             <small className="text-muted">Timestamp</small>
           </div>
         ))}
+        {props.isWaiting && (
+          <div className="d-flex flex-column p-3">
+            <div className="text-muted">Typing...</div>
+          </div>
+        )}
       </div>
 
       <div className="bg-light py-3 px-4 sticky-bottom">

@@ -1,50 +1,45 @@
+import classNames from "classnames";
 import React from "react";
 import Container from "react-bootstrap/Container";
 import Table from "react-bootstrap/Table";
 
 export interface Task {
   id: string;
-  name: string;
-  priority: number;
+  item_title: string;
+  priority: "low" | "medium" | "high";
   completed: boolean;
 }
 
-export interface Category {
-  name: string;
-  tasks: Task[];
-}
-
 interface TrackerAppProps {
-  categories: Category[];
+  tasks: Task[];
 }
 
 // Simple todo list task tracker using react-bootstrap
 export const TrackerApp: React.FC<TrackerAppProps> = (props) => {
   return (
-    <Container>
-      <h1>Task Tracker</h1>
-      {props.categories.map((category) => (
-        <>
-          <h2>Category: {category.name}</h2>
-
-          <Table>
-            <thead>
-              <tr>
-                <th>Task</th>
-                <th>Priority</th>
-              </tr>
-            </thead>
-            <tbody>
-              {category.tasks.map((task) => (
-                <tr key={task.id}>
-                  <td>{task.name}</td>
-                  <td>{task.priority}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </>
-      ))}
+    <Container style={{ paddingTop: "100px" }}>
+      <h1>To Do List</h1>
+      <Table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.tasks.map((task) => (
+            <tr
+              key={task.id}
+              className={classNames({
+                "text-decoration-line-through": task.completed,
+              })}
+            >
+              <td>{task.item_title}</td>
+              <td>{task.priority}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
     </Container>
   );
 };

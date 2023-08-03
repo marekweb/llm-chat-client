@@ -9,10 +9,10 @@ import {
 } from "./socket";
 import { ConversationMessage } from "./ConversationMessage";
 import { ChatInterface } from "./ChatInterface";
-import { Category } from "./TrackerApp";
+import { Task } from "./TrackerApp";
 interface ConversationProps {
   socketUrl: string;
-  setCategories: (categories: Category[]) => void;
+  updateAppState: (tasks: Task[]) => void;
 }
 
 export const Conversation: React.FC<ConversationProps> = (props) => {
@@ -40,8 +40,14 @@ export const Conversation: React.FC<ConversationProps> = (props) => {
       setConversationId(message.conversationId);
     }
 
-    if (message?.state === "update") {
-      props.setCategories(JSON.parse(message.content ?? ""));
+    if (message?.state === "typing") {
+      setIsLoading(true);
+    } else if (message?.state === "update") {
+      // Update state message is
+      //   state: "update"
+      //   content: JSON.stringify(state)
+      // which is not the best way to do this, but it works for now.
+      props.updateAppState(JSON.parse(message.content ?? ""));
     } else {
       setIsLoading(false);
       appendMessage({ role: "assistant", content: message.content ?? "" });
@@ -71,9 +77,16 @@ export const Conversation: React.FC<ConversationProps> = (props) => {
     setInputValue("");
   }, [inputValue, conversationId, socket]);
 
-  // connect to websocket
+  // Connect to socket
   useEffect(() => {
     const socket = new SocketConnection(props.socketUrl, handleMessage);
+    appendMessage({
+      role: "debug",
+      content: `Creating connection to ${props.socketUrl}`,
+    });
+    socket.stateChange.addEventListener((state) => {
+      appendMessage({ role: "debug", content: `Socket state: ${state}` });
+    });
     setSocket(socket);
     return () => {
       socket.close();
